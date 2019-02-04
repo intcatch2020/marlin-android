@@ -54,6 +54,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 
 
 public class MainActivity extends AppCompatActivity implements
@@ -78,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements
     private TextView txtView_1;
     private TextView txtView_2;
     private TextView txtView_3;
+    private TextView txtView_IP;
 
     // My var
     private ArrayList<Marker> markerArrayList;
@@ -86,9 +88,15 @@ public class MainActivity extends AppCompatActivity implements
     private Marker boatMarker;
 
     private boolean lineDrawed = false;
+    
+    //private String server_ip = "157.27.199.162"; //server pc
+    private String server_ip = "192.168.2.1"; //server boat
 
-    private String server_ip = "http://157.27.199.162:5000";
-    //private String server_ip = "http://157.27.204.186:5000"; //ip raspberry
+    private Dialog_Connect dialog_connect;
+    private Dialog_Speed dialog_speed;
+
+    private TreeMap<String, Double> sensorsValueMap;
+    private TreeMap<String, Double> boatPositionMap;
 
 
     @Override
@@ -96,6 +104,9 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         Mapbox.getInstance(this, getString(R.string.access_token));
         setContentView(R.layout.activity_main);
+
+        dialog_connect = new Dialog_Connect();
+        dialog_speed = new Dialog_Speed();
 
         mapView = findViewById(R.id.mapView);
         cleanButton = findViewById(R.id.cleanButton);
@@ -105,6 +116,7 @@ public class MainActivity extends AppCompatActivity implements
         txtView_1 = findViewById(R.id.textView_1);
         txtView_2 = findViewById(R.id.textView_2);
         txtView_3 = findViewById(R.id.textView_3);
+        txtView_IP = findViewById(R.id.tv_IPaddress);
         NavigationView navigationView = findViewById(R.id.nav_view);
 
         mapView.onCreate(savedInstanceState);
@@ -119,6 +131,18 @@ public class MainActivity extends AppCompatActivity implements
         actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
 
         final RequestQueue queue = Volley.newRequestQueue(this);
+
+        // TEST STUFF
+        sensorsValueMap = new TreeMap<>();
+        sensorsValueMap.put("PH", -1.0);
+        sensorsValueMap.put("DO", -1.0);
+        sensorsValueMap.put("EC", -1.0);
+
+        boatPositionMap = new TreeMap<>();
+        boatPositionMap.put("Ltd", -1.0);
+        boatPositionMap.put("Lng", -1.0);
+        boatPositionMap.put("Rot", -1.0);
+        // TEST STUFF
 
         markerArrayList = new ArrayList<>();
         lineArrayList = new ArrayList<>();
@@ -135,14 +159,17 @@ public class MainActivity extends AppCompatActivity implements
                         // close drawer when item is tapped
                         drawerLayout.closeDrawers();
 
-                        Dialog_Popup dialog_popup = new Dialog_Popup();
-                        dialog_popup.show(getSupportFragmentManager(), "Dialog_Popup");
+                        if(menuItem.getItemId() == R.id.connect_to_boat)
+                            dialog_connect.show(getSupportFragmentManager(), "Dialog_Connect");
+                        else if (menuItem.getItemId() == R.id.set_speed)
+                            dialog_speed.show(getSupportFragmentManager(), "Dialog_Speed");
 
                         return true;
                     }
                 });
 
-        final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, server_ip + "/state", null, new Response.Listener<JSONObject>() {
+
+        final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new Response.Listener<JSONObject>() {
 
                     @Override
                     public void onResponse(JSONObject response) {
@@ -152,7 +179,7 @@ public class MainActivity extends AppCompatActivity implements
 
                         double boatLatitude = 0;
                         double boatLongitude = 0;
-                        //double speed = 0;
+                        double speed = 0;
 
                         try {
                             JSONObject sensors = response.getJSONObject("sensors");
@@ -163,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements
                             JSONObject boatPositionRead = response.getJSONObject("GPS");
                             boatLatitude = boatPositionRead.getDouble("lat");
                             boatLongitude = boatPositionRead.getDouble("lng");
-                            //speed = boatPositionRead.getDouble("speed");
+                            speed = boatPositionRead.getDouble("speed");
 
                             JSONObject boatAPS = response.getJSONObject("APS");
                             boatRotation = boatAPS.getDouble("heading");
@@ -175,6 +202,8 @@ public class MainActivity extends AppCompatActivity implements
                         txtView_1.setText("PH\n" + String.format("%.2f", readPH));
                         txtView_2.setText("DO\n" + String.format("%.2f", readDO));
                         txtView_3.setText("EC\n" + String.format("%.2f", readEC));
+
+                        txtView_IP.setText("Speed: " + speed);
 
                         boatPosition = Point.fromLngLat(boatLongitude, boatLatitude);
                         updateBoatMarkerPosition();
@@ -192,13 +221,21 @@ public class MainActivity extends AppCompatActivity implements
                     }
                 });
 
+        //final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueList, boatPositionList), new GetListener(sensorsValueList, boatPositionList));
+        //final JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, null, null);
+
         final Handler myHandler = new Handler();
         myHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                //Log.d("Debug-periodic", "Periodic call");
                 queue.add(jsonObjectRequestGet);
                 myHandler.postDelayed(this, 500);
+                //server_ip = dialog_connect.ip;
+                //txtView_IP.setText(server_ip);
+
+                //txtView_1.setText(String.format("PH\n%s", sensorsValueMap.get("PH")));
+                //txtView_2.setText(String.format("DO\n%s", sensorsValueMap.get("DO")));
+                //txtView_3.setText(String.format("EC\n%s", sensorsValueMap.get("EC")));
             }
         }, 500);
 
@@ -232,7 +269,7 @@ public class MainActivity extends AppCompatActivity implements
                 playButton.setImageResource(R.drawable.ic_wrong_directions);
                 lineDrawed = false;
 
-                final JsonObjectRequest stopAutonomyRequest= new JsonObjectRequest(Request.Method.POST, server_ip + "/stop_autonomy", null, new Response.Listener<JSONObject>() {
+                final JsonObjectRequest stopAutonomyRequest= new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
                         Log.d("Debug-datasend", "Sended");
@@ -262,7 +299,7 @@ public class MainActivity extends AppCompatActivity implements
                     }
                     Log.d("Debug-jsongeneration", "JSON: " + pathToSend.toString());
 
-                    final JsonObjectRequest jsonObjectRequestPost = new JsonObjectRequest(Request.Method.POST, server_ip + "/start_autonomy", pathToSend, new Response.Listener<JSONObject>() {
+                    final JsonObjectRequest jsonObjectRequestPost = new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", pathToSend, new Response.Listener<JSONObject>() {
                         @Override
                         public void onResponse(JSONObject response) {
                             Log.d("Debug-datasend", "Sended");

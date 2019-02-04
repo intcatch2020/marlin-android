@@ -9,15 +9,20 @@ import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-public class Dialog_Popup extends DialogFragment {
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
+
+public class Dialog_Speed extends DialogFragment {
 
     private static int selectedSpeed = 50;
 
+    @NotNull
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        LayoutInflater inflater = getActivity().getLayoutInflater();
+        LayoutInflater inflater = Objects.requireNonNull(getActivity()).getLayoutInflater();
 
-        View view = inflater.inflate((R.layout.layout_popup), null);
+        View view = inflater.inflate((R.layout.popup_speed), null);
         SeekBar seekBarSpeed = view.findViewById(R.id.sb_speed);
         final TextView textViewSpeed = view.findViewById(R.id.tv_speed);
 

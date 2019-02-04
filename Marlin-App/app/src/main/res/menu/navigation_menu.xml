@@ -3,7 +3,6 @@
 
     <item
         android:id="@+id/connect_to_boat"
-        android:enabled="false"
         android:icon="@drawable/direction_arrive_right"
         android:title="Connect to Boat" />
 
