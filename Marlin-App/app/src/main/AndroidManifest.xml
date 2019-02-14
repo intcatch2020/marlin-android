@@ -16,11 +16,12 @@
         <!--android:theme="@style/Theme.AppCompat.Light.NoActionBar" >-->
 
 
-        <activity android:name="com.mapbox.marlin.MainActivity">
+        <activity android:name="com.mapbox.marlin.MainActivity" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
     </application>
 

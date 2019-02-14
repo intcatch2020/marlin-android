@@ -1,7 +1,9 @@
 package com.mapbox.marlin;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -14,8 +16,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,7 +31,6 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
-import com.mapbox.geojson.Point;
 
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Icon;
@@ -48,38 +51,34 @@ import com.mapbox.mapboxsdk.location.modes.CameraMode;
 import com.mapbox.mapboxsdk.location.modes.RenderMode;
 import com.mapbox.mapboxsdk.maps.Style;
 
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 
-public class MainActivity extends AppCompatActivity implements
-        OnMapReadyCallback, PermissionsListener, MapboxMap.OnMapLongClickListener {
-
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, PermissionsListener, MapboxMap.OnMapLongClickListener {
 
     private DrawerLayout drawerLayout;
     private PermissionsManager permissionsManager;
-
     private MapboxMap map;
     private MapView mapView;
     private Style mapStyle;
-
-    private Point phonePosition;
-    private Point boatPosition;
-    private double boatRotation;
 
     // View Object
     private FloatingActionButton cleanButton;
     private FloatingActionButton playButton;
     private FloatingActionButton centerBoatButton;
-    private TextView txtView_1;
-    private TextView txtView_2;
-    private TextView txtView_3;
-    private TextView txtView_IP;
+    private TextView txtView_miniLog;
+    private NavigationView navigationView;
+
+    private LinearLayout sensorTxtContainer;
+    private ArrayList<TextView> sensorsTextViewList;
 
     // My var
     private ArrayList<Marker> markerArrayList;
@@ -87,41 +86,53 @@ public class MainActivity extends AppCompatActivity implements
 
     private Marker boatMarker;
 
-    private boolean lineDrawed = false;
-    
-    //private String server_ip = "157.27.199.162"; //server pc
+    private boolean lineSet = false;
+
+    //private String server_ip = "157.27.198.83"; //server pc
     private String server_ip = "192.168.2.1"; //server boat
+    //private String server_ip = "157.27.204.190"; //server my
 
     private Dialog_Connect dialog_connect;
     private Dialog_Speed dialog_speed;
 
-    private TreeMap<String, Double> sensorsValueMap;
-    private TreeMap<String, Double> boatPositionMap;
+    private TreeMap<String, SensorData> sensorsValueMap;
+    private TreeMap<String, Double> infoValueMap;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState)  {
+        // Class constructor
         super.onCreate(savedInstanceState);
         Mapbox.getInstance(this, getString(R.string.access_token));
         setContentView(R.layout.activity_main);
 
-        dialog_connect = new Dialog_Connect();
-        dialog_speed = new Dialog_Speed();
-
+        // Get all view elements
         mapView = findViewById(R.id.mapView);
         cleanButton = findViewById(R.id.cleanButton);
         playButton = findViewById(R.id.playButton);
         centerBoatButton = findViewById(R.id.centerBoatButton);
         drawerLayout = findViewById(R.id.drawer_layout);
-        txtView_1 = findViewById(R.id.textView_1);
-        txtView_2 = findViewById(R.id.textView_2);
-        txtView_3 = findViewById(R.id.textView_3);
-        txtView_IP = findViewById(R.id.tv_IPaddress);
-        NavigationView navigationView = findViewById(R.id.nav_view);
+        txtView_miniLog = findViewById(R.id.textView_miniLog);
+        navigationView = findViewById(R.id.nav_view);
 
+        // Get all the sensors view
+        sensorsTextViewList = new ArrayList<>();
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_1));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_2));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_3));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_4));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_5));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_6));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_7));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_8));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_9));
+        sensorsTextViewList.add((TextView) findViewById(R.id.textView_10));
+
+        // Initialize MapBox
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
 
+        // Toolbar and actionbar stuff
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ActionBar actionbar = getSupportActionBar();
@@ -130,195 +141,123 @@ public class MainActivity extends AppCompatActivity implements
         actionbar.setDisplayHomeAsUpEnabled(true);
         actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
 
+        // Initialize server request queue
         final RequestQueue queue = Volley.newRequestQueue(this);
 
-        // TEST STUFF
+        // Initialize sensors map
         sensorsValueMap = new TreeMap<>();
-        sensorsValueMap.put("PH", -1.0);
-        sensorsValueMap.put("DO", -1.0);
-        sensorsValueMap.put("EC", -1.0);
+        infoValueMap = new TreeMap<>();
+        infoValueMap.put("Lat", -1.);
+        infoValueMap.put("Lng", -1.);
+        infoValueMap.put("Rot", -1.);
+        infoValueMap.put("GpsSpd", -1.);
+        infoValueMap.put("Calibration", -1.);
+        infoValueMap.put("AutoSpd", -1.);
+        infoValueMap.put("Mode", -1.);
 
-        boatPositionMap = new TreeMap<>();
-        boatPositionMap.put("Ltd", -1.0);
-        boatPositionMap.put("Lng", -1.0);
-        boatPositionMap.put("Rot", -1.0);
-        // TEST STUFF
-
+        // Initialize other variables
         markerArrayList = new ArrayList<>();
         lineArrayList = new ArrayList<>();
-        boatPosition = Point.fromLngLat(11.02, 45.35);
-        boatRotation = 0;
 
-        navigationView.setNavigationItemSelectedListener( new NavigationView.OnNavigationItemSelectedListener() {
-                    @Override
-                    public boolean onNavigationItemSelected(MenuItem menuItem) {
-                        // set item as selected to persist highlight
-                        //menuItem.setChecked(true);
-                        //Toast.makeText(getApplicationContext(), "" + menuItem.getTitle(), Toast.LENGTH_LONG).show();
+        // Initialize periodic GET request
+        final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
 
-                        // close drawer when item is tapped
-                        drawerLayout.closeDrawers();
+        // Initialize dialog windows
+        dialog_connect = new Dialog_Connect();
+        dialog_speed = new Dialog_Speed();
 
-                        if(menuItem.getItemId() == R.id.connect_to_boat)
-                            dialog_connect.show(getSupportFragmentManager(), "Dialog_Connect");
-                        else if (menuItem.getItemId() == R.id.set_speed)
-                            dialog_speed.show(getSupportFragmentManager(), "Dialog_Speed");
-
-                        return true;
-                    }
-                });
-
-
-        final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new Response.Listener<JSONObject>() {
-
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        double readDO = 0;
-                        double readPH = 0;
-                        double readEC = 0;
-
-                        double boatLatitude = 0;
-                        double boatLongitude = 0;
-                        double speed = 0;
-
-                        try {
-                            JSONObject sensors = response.getJSONObject("sensors");
-                            readDO = sensors.getDouble("do");
-                            readEC = sensors.getDouble("ec");
-                            readPH = sensors.getDouble("ph");
-
-                            JSONObject boatPositionRead = response.getJSONObject("GPS");
-                            boatLatitude = boatPositionRead.getDouble("lat");
-                            boatLongitude = boatPositionRead.getDouble("lng");
-                            speed = boatPositionRead.getDouble("speed");
-
-                            JSONObject boatAPS = response.getJSONObject("APS");
-                            boatRotation = boatAPS.getDouble("heading");
-
-                        } catch (JSONException e) {
-                            // Handle error
-                        }
-
-                        txtView_1.setText("PH\n" + String.format("%.2f", readPH));
-                        txtView_2.setText("DO\n" + String.format("%.2f", readDO));
-                        txtView_3.setText("EC\n" + String.format("%.2f", readEC));
-
-                        txtView_IP.setText("Speed: " + speed);
-
-                        boatPosition = Point.fromLngLat(boatLongitude, boatLatitude);
-                        updateBoatMarkerPosition();
-                        Log.d("Debug-dataread", "Read new data, boat pos: " + boatPosition.coordinates());
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        txtView_1.setText("PH\n" + "--");
-                        txtView_2.setText("DO\n" + "--");
-                        txtView_3.setText("EC\n"+ "--");
-
-                        Log.d("Debug-dataread", "Error while rading");
-                        Log.d("Debug-dataread", error.toString());
-                    }
-                });
-
-        //final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueList, boatPositionList), new GetListener(sensorsValueList, boatPositionList));
-        //final JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, null, null);
-
+        // Set-up periodic cycle
         final Handler myHandler = new Handler();
         myHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 queue.add(jsonObjectRequestGet);
                 myHandler.postDelayed(this, 500);
-                //server_ip = dialog_connect.ip;
-                //txtView_IP.setText(server_ip);
 
-                //txtView_1.setText(String.format("PH\n%s", sensorsValueMap.get("PH")));
-                //txtView_2.setText(String.format("DO\n%s", sensorsValueMap.get("DO")));
-                //txtView_3.setText(String.format("EC\n%s", sensorsValueMap.get("EC")));
+                updateMiniLogValues();
+                updateSensorView();
+                updateBoatMarkerPosition();
+                updateAutonomySpeedView();
             }
         }, 500);
 
+        // Navigation View menu listener
+        navigationView.setNavigationItemSelectedListener( new NavigationView.OnNavigationItemSelectedListener() {
+                    @Override
+                    public boolean onNavigationItemSelected(@NotNull MenuItem menuItem) {
+                        drawerLayout.closeDrawers();
+
+                        if(menuItem.getItemId() == R.id.connect_to_boat)
+                            dialog_connect.show(getSupportFragmentManager(), "Dialog_Connect");
+                        else if (menuItem.getItemId() == R.id.set_speed) {
+                            Dialog_Speed.server_ip = server_ip;
+                            Dialog_Speed.queue = queue;
+                            dialog_speed.show(getSupportFragmentManager(), "Dialog_Speed");
+                        }
+
+                        return true;
+                    }
+
+                });
+
+        // Center Button Listener
         centerBoatButton.setOnClickListener( new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                setCameraPosition(boatPosition.latitude(), boatPosition.longitude(), 15);
+                if(infoValueMap.get("Lat") == -1 && infoValueMap.get("Lat") == -1)
+                    Toast.makeText(getApplicationContext(), "No GPS signal!", Toast.LENGTH_LONG).show();
+                else
+                    setCameraPosition(infoValueMap.get("Lat"), infoValueMap.get("Lng"));
             }
         });
 
+        // Clean Button Listener
         cleanButton.setOnClickListener( new View.OnClickListener() {
             @Override
             public void onClick(View v){
-                //Toast.makeText(getApplicationContext(), "Clean Map", Toast.LENGTH_LONG).show();
-
-                for (Marker m : markerArrayList) {
+                // Clear marker and line graphic
+                for (Marker m : markerArrayList)
                     map.removeMarker(m);
-                }
-
-                for (Polyline l : lineArrayList) {
+                for (Polyline l : lineArrayList)
                     map.removePolyline(l);
-                }
 
+                // Clear marker and line logic
                 markerArrayList.clear();
                 lineArrayList.clear();
-                //cleanButton.isClickable(true);
 
+                // Re-Enable play button and deactivate the flag
                 playButton.setEnabled(true);
                 playButton.setClickable(true);
                 playButton.setAlpha(1.0f);
                 playButton.setImageResource(R.drawable.ic_wrong_directions);
-                lineDrawed = false;
+                lineSet = false;
 
-                final JsonObjectRequest stopAutonomyRequest= new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        Log.d("Debug-datasend", "Sended");
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.d("Debug-datasend", error.toString());
-                    }
-                });
-                queue.add(stopAutonomyRequest);
+                // POST request for stop autonomy
+                queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, null, null));
             }
         });
 
+        // Play Button Listener, send path or draw the graphic og the path (depending on the flag)
         playButton.setOnClickListener( new View.OnClickListener() {
             @Override
             public void onClick(View v){
-                //Toast.makeText(getApplicationContext(), "Write Lines", Toast.LENGTH_LONG).show();
-                if(lineDrawed) {
+                if(lineSet) {
                     Toast.makeText(getApplicationContext(), "Sending path...", Toast.LENGTH_LONG).show();
 
-                    JSONObject pathToSend = null;
-                    try {
-                        pathToSend = createPathJSON();
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    Log.d("Debug-jsongeneration", "JSON: " + pathToSend.toString());
+                    //JSONObject pathToSend = createPathJSON();
+                    queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", createPathJSON(), null, null));
 
-                    final JsonObjectRequest jsonObjectRequestPost = new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", pathToSend, new Response.Listener<JSONObject>() {
-                        @Override
-                        public void onResponse(JSONObject response) {
-                            Log.d("Debug-datasend", "Sended");
-                        }
-                    }, new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            Log.d("Debug-datasend", error.toString());
-                        }
-                    });
-
-                    queue.add(jsonObjectRequestPost);
-
-                    lineDrawed = false;
+                    lineSet = false;
                     playButton.setEnabled(false);
                     playButton.setClickable(false);
                     playButton.setAlpha(0.3f);
                 }
                 else {
+                    PathPlanner pathPlanner = new PathPlanner();
+                    pathPlanner.setPoints(markerArrayList);
+                    ArrayList<Marker> graphicMarker = pathPlanner.getSpiralPath();
+
+                    //for (int i=0; i < graphicMarker.size()-1; i++){
                     for (int i=0; i < markerArrayList.size()-1; i++){
                         Polyline newLine = map.addPolyline(new PolylineOptions()
                                 .add(markerArrayList.get(i).getPosition())
@@ -327,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements
                         );
                         lineArrayList.add(newLine);
                     }
-                    lineDrawed = true;
+                    lineSet = true;
                     playButton.setImageResource(R.drawable.ic_play);
 
                 }
@@ -336,7 +275,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onMapReady(MapboxMap mapboxMap) {
+    public void onMapReady(@NotNull MapboxMap mapboxMap) {
         map = mapboxMap;
         map.addOnMapLongClickListener(this);
 
@@ -352,34 +291,30 @@ public class MainActivity extends AppCompatActivity implements
         map.getUiSettings().setRotateGesturesEnabled(false);
     }
 
-
     @Override
     public boolean onMapLongClick(@NonNull LatLng point) {
-        //Toast.makeText(getApplicationContext(), "Added marker #" + markerArrayList.size(), Toast.LENGTH_LONG).show();
-
         Marker newMarker = map.addMarker(new MarkerOptions()
                                     .position(point)
                                     .title("Marker #" + markerArrayList.size())
         );
         markerArrayList.add(newMarker);
-        Log.d("Debug-pos", "Marker Added " + markerArrayList.size());
-        Log.d("Debug-pos", "@ pos: " + newMarker.getPosition());
-
         return true;
     }
 
     private void updateBoatMarkerPosition(){
-        LatLng boatMarkerPos = new LatLng(boatPosition.latitude(), boatPosition.longitude());
+        double boatLat = infoValueMap.get("Lat");
+        double boatLng = infoValueMap.get("Lng");
+        double boatRot = infoValueMap.get("Rot");
+
+        LatLng boatMarkerPos = new LatLng(boatLat, boatLng);
 
         IconFactory iconFactory = IconFactory.getInstance(MainActivity.this);
 
         Bitmap bInput = BitmapFactory.decodeResource(getResources(), R.drawable.arrow_white);
         Matrix matrix = new Matrix();
-        matrix.setRotate((float)boatRotation);
+        matrix.setRotate((float)boatRot);
         Bitmap bOutput = Bitmap.createBitmap(bInput, 0, 0, bInput.getWidth(), bInput.getHeight(), matrix, true);
         Icon icon = iconFactory.fromBitmap(bOutput);
-
-        Log.d("Debug-putmarker", "boatmarker: " + boatRotation);
 
         if(map != null) {
             if(map.getMarkers().contains(boatMarker))
@@ -393,28 +328,100 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-
-    private void setCameraPosition(double latitude, double longitude, double zoom){
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), zoom));
+    private void updateAutonomySpeedView(){
+        double value = infoValueMap.get("AutoSpd");
+        if(value != -1)
+         Dialog_Speed.selectedSpeed = (int)value;
     }
 
-    private JSONObject createPathJSON() throws JSONException {
-        JSONObject mainObject = new JSONObject();
+    @SuppressLint("DefaultLocale")
+    private void updateSensorView(){
 
-        JSONArray listObject = new JSONArray();
-        for (Marker m : markerArrayList){
-            JSONObject coordinate = new JSONObject();
-
-            coordinate.put("lat", m.getPosition().getLatitude());
-            coordinate.put("lng", m.getPosition().getLongitude());
-
-            listObject.put(coordinate);
+        int i = 0;
+        for (Map.Entry<String, SensorData> entry : sensorsValueMap.entrySet()) {
+            String key = entry.getKey();
+            double value = entry.getValue().value;
+            String unit = entry.getValue().unit;
+            sensorsTextViewList.get(i).setText(String.format("%s\n%.2f\n%s", key, value, unit));
+            sensorsTextViewList.get(i).setVisibility(View.VISIBLE);
+            i++;
         }
 
-        mainObject.put("path", listObject);
+        for (int j=i; j < sensorsTextViewList.size(); j++){
+            sensorsTextViewList.get(j).setVisibility(View.GONE);
+        }
+    }
+
+    @SuppressLint({"DefaultLocale", "SetTextI18n"})
+    private void updateMiniLogValues(){
+
+        String ip = server_ip;
+        double speed = infoValueMap.get("GpsSpd");
+        int calibration = infoValueMap.get("Calibration").intValue();
+        int mode = infoValueMap.get("Mode").intValue();
+
+        String modeStr;
+        switch (mode) {
+            case 0:
+                modeStr = "RC";
+                break;
+            case 1:
+                modeStr = "Autonomy";
+                break;
+            case 2:
+                modeStr = "Go Home";
+                break;
+            default:
+                modeStr = "Unknown";
+                break;
+        }
+
+
+        String miniLog = "";
+        miniLog += String.format("IP: %s \n", ip);
+        miniLog += String.format("Speed: %s \n", speed);
+        miniLog += String.format("Compass Calibration: %d/3 \n", calibration);
+        miniLog += String.format("Driving Mode: %s", modeStr);
+
+        if (calibration == -1){
+            // Use calibration as a value, -1 the boat is disconnected, if {0, 1, 2} boat connected
+            txtView_miniLog.setText("Boat Disconnected");
+            txtView_miniLog.setTextColor(Color.rgb(255, 0, 0));
+        }
+        else {
+            txtView_miniLog.setText(miniLog);
+            txtView_miniLog.setTextColor(Color.rgb(0, 0, 0));
+        }
+    }
+
+    private JSONObject createPathJSON() {
+        JSONObject mainObject = new JSONObject();
+
+        try {
+            JSONArray listObject = new JSONArray();
+            for (Marker m : markerArrayList){
+                JSONObject coordinate = new JSONObject();
+
+                coordinate.put("lat", m.getPosition().getLatitude());
+                coordinate.put("lng", m.getPosition().getLongitude());
+
+                listObject.put(coordinate);
+            }
+            mainObject.put("path", listObject);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
         return mainObject;
     }
+
+    private void setCameraPosition(double latitude, double longitude){
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), (double) 15));
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // =========================== END OF CODE =========================== //
+    /////////////////////////////////////////////////////////////////////////
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -429,19 +436,11 @@ public class MainActivity extends AppCompatActivity implements
     @SuppressWarnings({"MissingPermission"})
     private void enableLocationComponent(@NonNull Style loadedMapStyle){
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            // Get an instance of the component
             LocationComponent locationComponent = map.getLocationComponent();
 
-            // Activate
             locationComponent.activateLocationComponent(this, loadedMapStyle);
-
-            // Enable to make component visible
             locationComponent.setLocationComponentEnabled(true);
-
-            // Set the component's camera mode
             locationComponent.setCameraMode(CameraMode.TRACKING);
-
-            // Set the component's render mode
             locationComponent.setRenderMode(RenderMode.COMPASS);
 
         } else {

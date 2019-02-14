@@ -9,16 +9,24 @@ import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.Objects;
 
 public class Dialog_Speed extends DialogFragment {
 
-    private static int selectedSpeed = 50;
+    public static int selectedSpeed = 50;
+    public static String server_ip;
+    public static RequestQueue queue;
 
     @NotNull
-    public Dialog onCreateDialog(Bundle savedInstanceState) {
+    public Dialog onCreateDialog(final Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         LayoutInflater inflater = Objects.requireNonNull(getActivity()).getLayoutInflater();
 
@@ -34,6 +42,7 @@ public class Dialog_Speed extends DialogFragment {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean b) {
                 textViewSpeed.setText("" + progress + "%");
                 selectedSpeed = progress;
+
             }
 
             @Override
@@ -43,12 +52,24 @@ public class Dialog_Speed extends DialogFragment {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-
+                queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/speed", createSpeedJSON(), null, null));
             }
         });
 
         builder.setView(view);
         return builder.create();
+    }
+
+     private static JSONObject createSpeedJSON(){
+        JSONObject mainObject = new JSONObject();
+
+        try {
+            mainObject.put("speed", selectedSpeed);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return mainObject;
     }
 
 }
