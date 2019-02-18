@@ -37,14 +37,14 @@
             />
 
         <android.support.design.widget.FloatingActionButton
-            android:id="@+id/cleanButton"
+            android:id="@+id/clearButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
-            android:clickable="false"
+            android:clickable="true"
             android:focusable="true"
-            android:src="@drawable/ic_close"
+            android:src="@drawable/ic_trash"
             mapbox:backgroundTint="@color/floatingButton"
             mapbox:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
             mapbox:layout_constraintEnd_toEndOf="parent" />
@@ -53,14 +53,17 @@
             android:id="@+id/playButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
             android:clickable="false"
-            android:focusable="true"
-            android:src="@drawable/ic_wrong_directions"
+            android:focusable="false"
+            android:alpha="0.1"
+            android:src="@drawable/ic_play_color"
             mapbox:backgroundTint="@color/floatingButton"
-            mapbox:layout_constraintBottom_toTopOf="@+id/cleanButton"
-            mapbox:layout_constraintEnd_toEndOf="parent" />
+            mapbox:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
+            mapbox:layout_constraintEnd_toEndOf="@+id/clearButton"
+            mapbox:layout_constraintStart_toStartOf="@+id/centerBoatButton" />
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/centerBoatButton"
@@ -68,12 +71,42 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginBottom="8dp"
-            android:clickable="false"
+            android:clickable="true"
             android:focusable="true"
-            android:src="@drawable/ic_maneuver_roundabout"
+            android:src="@drawable/ic_search"
             mapbox:backgroundTint="@color/floatingButton"
             mapbox:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
             mapbox:layout_constraintStart_toStartOf="parent" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/spiralPathButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:src="@drawable/ic_map_3"
+            mapbox:backgroundTint="@color/floatingButton"
+            mapbox:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
+            mapbox:layout_constraintEnd_toStartOf="@+id/playButton"
+            mapbox:layout_constraintStart_toEndOf="@+id/centerBoatButton" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/standardPathButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:src="@drawable/ic_map_1"
+            mapbox:backgroundTint="@color/floatingButton"
+            mapbox:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
+            mapbox:layout_constraintEnd_toStartOf="@+id/clearButton"
+            mapbox:layout_constraintStart_toEndOf="@+id/playButton" />
 
         <TextView
             android:id="@+id/textView_miniLog"

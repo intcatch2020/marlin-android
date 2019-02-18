@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.os.Debug;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -23,6 +24,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.amazonaws.RequestClientOptions;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -71,9 +73,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Style mapStyle;
 
     // View Object
-    private FloatingActionButton cleanButton;
+    private FloatingActionButton clearButton;
     private FloatingActionButton playButton;
     private FloatingActionButton centerBoatButton;
+    private FloatingActionButton spiralPathButton;
+    private FloatingActionButton standardPathButton;
     private TextView txtView_miniLog;
     private NavigationView navigationView;
 
@@ -81,7 +85,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ArrayList<TextView> sensorsTextViewList;
 
     // My var
-    private ArrayList<Marker> markerArrayList;
+    private ArrayList<Marker> markerArrayListGraphic;
+    private ArrayList<Marker> markerArrayListLogic;
     private ArrayList<Polyline> lineArrayList;
 
     private Marker boatMarker;
@@ -108,9 +113,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Get all view elements
         mapView = findViewById(R.id.mapView);
-        cleanButton = findViewById(R.id.cleanButton);
+        clearButton = findViewById(R.id.clearButton);
         playButton = findViewById(R.id.playButton);
         centerBoatButton = findViewById(R.id.centerBoatButton);
+        spiralPathButton = findViewById(R.id.spiralPathButton);
+        standardPathButton = findViewById(R.id.standardPathButton);
         drawerLayout = findViewById(R.id.drawer_layout);
         txtView_miniLog = findViewById(R.id.textView_miniLog);
         navigationView = findViewById(R.id.nav_view);
@@ -156,7 +163,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         infoValueMap.put("Mode", -1.);
 
         // Initialize other variables
-        markerArrayList = new ArrayList<>();
+        markerArrayListGraphic = new ArrayList<>();
+        markerArrayListLogic = new ArrayList<>();
         lineArrayList = new ArrayList<>();
 
         // Initialize periodic GET request
@@ -211,65 +219,88 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // Clean Button Listener
-        cleanButton.setOnClickListener( new View.OnClickListener() {
+        // Clear Button Listener
+        clearButton.setOnClickListener( new View.OnClickListener() {
             @Override
             public void onClick(View v){
                 // Clear marker and line graphic
-                for (Marker m : markerArrayList)
+                for (Marker m : markerArrayListGraphic)
                     map.removeMarker(m);
                 for (Polyline l : lineArrayList)
                     map.removePolyline(l);
 
                 // Clear marker and line logic
-                markerArrayList.clear();
+                markerArrayListGraphic.clear();
+                markerArrayListLogic.clear();
                 lineArrayList.clear();
 
-                // Re-Enable play button and deactivate the flag
-                playButton.setEnabled(true);
-                playButton.setClickable(true);
-                playButton.setAlpha(1.0f);
-                playButton.setImageResource(R.drawable.ic_wrong_directions);
-                lineSet = false;
+                // Re-Enable the path maker buttons
+                enableButton(spiralPathButton);
+                enableButton(standardPathButton);
+                disableButton(playButton);
 
                 // POST request for stop autonomy
                 queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, null, null));
             }
         });
 
-        // Play Button Listener, send path or draw the graphic og the path (depending on the flag)
+        // Spiral button listener, create the spiral path (graphic for the line, logic for marker)
+        spiralPathButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                if(markerArrayListGraphic.size() < 3)
+                    Toast.makeText(getApplicationContext(), "I need at least 3 points for this!", Toast.LENGTH_LONG).show();
+                else {
+                    PathPlanner pathPlanner = new PathPlanner();
+                    pathPlanner.setPoints(markerArrayListLogic);
+                    markerArrayListLogic = pathPlanner.getSpiralPath(3);
+
+                    for (int i = 0; i < markerArrayListLogic.size() - 1; i++) {
+                        Polyline newLine = map.addPolyline(new PolylineOptions()
+                                .add(markerArrayListLogic.get(i).getPosition())
+                                .add(markerArrayListLogic.get(i + 1).getPosition())
+                                .width(3));
+                        lineArrayList.add(newLine);
+                    }
+
+                    enableButton(playButton);
+                    disableButton(spiralPathButton);
+                    disableButton(standardPathButton);
+                }
+            }
+        });
+
+        // Standard button listener, create the spiral path (graphic for the line, logic for marker)
+        standardPathButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                PathPlanner pathPlanner = new PathPlanner();
+                pathPlanner.setPoints(markerArrayListLogic);
+                markerArrayListLogic = pathPlanner.getStandardPath();
+
+                for (int i=0; i < markerArrayListLogic.size()-1; i++){
+                    Polyline newLine = map.addPolyline(new PolylineOptions()
+                            .add(markerArrayListLogic.get(i).getPosition())
+                            .add(markerArrayListLogic.get(i+1).getPosition())
+                            .width(3));
+                    lineArrayList.add(newLine);
+                }
+
+                enableButton(playButton);
+                disableButton(spiralPathButton);
+                disableButton(standardPathButton);
+            }
+        });
+
+        // Play Button Listener, send path (logic marker)
         playButton.setOnClickListener( new View.OnClickListener() {
             @Override
             public void onClick(View v){
-                if(lineSet) {
-                    Toast.makeText(getApplicationContext(), "Sending path...", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), "Sending path...", Toast.LENGTH_LONG).show();
 
-                    //JSONObject pathToSend = createPathJSON();
-                    queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", createPathJSON(), null, null));
+                queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", createPathJSON(), null, null));
 
-                    lineSet = false;
-                    playButton.setEnabled(false);
-                    playButton.setClickable(false);
-                    playButton.setAlpha(0.3f);
-                }
-                else {
-                    PathPlanner pathPlanner = new PathPlanner();
-                    pathPlanner.setPoints(markerArrayList);
-                    ArrayList<Marker> graphicMarker = pathPlanner.getSpiralPath();
-
-                    //for (int i=0; i < graphicMarker.size()-1; i++){
-                    for (int i=0; i < markerArrayList.size()-1; i++){
-                        Polyline newLine = map.addPolyline(new PolylineOptions()
-                                .add(markerArrayList.get(i).getPosition())
-                                .add(markerArrayList.get(i+1).getPosition())
-                                .width(3)
-                        );
-                        lineArrayList.add(newLine);
-                    }
-                    lineSet = true;
-                    playButton.setImageResource(R.drawable.ic_play);
-
-                }
+                disableButton(playButton);
             }
         });
     }
@@ -295,9 +326,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public boolean onMapLongClick(@NonNull LatLng point) {
         Marker newMarker = map.addMarker(new MarkerOptions()
                                     .position(point)
-                                    .title("Marker #" + markerArrayList.size())
+                                    .title("Marker #" + markerArrayListGraphic.size())
         );
-        markerArrayList.add(newMarker);
+        markerArrayListGraphic.add(newMarker);
+        markerArrayListLogic.add(newMarker);
         return true;
     }
 
@@ -399,7 +431,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         try {
             JSONArray listObject = new JSONArray();
-            for (Marker m : markerArrayList){
+            for (Marker m : markerArrayListLogic){
                 JSONObject coordinate = new JSONObject();
 
                 coordinate.put("lat", m.getPosition().getLatitude());
@@ -417,6 +449,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void setCameraPosition(double latitude, double longitude){
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), (double) 15));
+    }
+
+    private void disableButton(FloatingActionButton button){
+        button.setEnabled(false);
+        button.setClickable(false);
+        button.setAlpha(0.3f);
+    }
+
+    private void enableButton(FloatingActionButton button){
+        button.setEnabled(true);
+        button.setClickable(true);
+        button.setAlpha(1.f);
     }
 
     //////////////////////////////////////////////////////////////////////////

@@ -3,31 +3,31 @@
 
     <item
         android:id="@+id/connect_to_boat"
-        android:icon="@drawable/direction_arrive_right"
+        android:icon="@drawable/ic_connect"
         android:title="Connect to Boat" />
 
     <item
         android:id="@+id/set_speed"
         android:title="Set Speed"
-        android:icon="@drawable/mapbox_compass_icon" />
+        android:icon="@drawable/ic_speed" />
 
 
     <item
         android:id="@+id/peristaltic_pump"
         android:enabled="false"
-        android:icon="@drawable/direction_roundabout"
+        android:icon="@drawable/ic_wip"
         android:title="Peristaltic Pump" />
 
     <item
         android:id="@+id/heavy_metal"
         android:enabled="false"
-        android:icon="@drawable/direction_roundabout"
+        android:icon="@drawable/ic_wip"
         android:title="Heavy Metal Pump" />
 
     <item
         android:id="@+id/sampler"
         android:enabled="false"
-        android:icon="@drawable/direction_roundabout"
+        android:icon="@drawable/ic_wip"
         android:title="Sampler" />
 
 
