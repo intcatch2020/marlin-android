@@ -120,6 +120,18 @@
             mapbox:layout_constraintTop_toBottomOf="@+id/toolbar"
             android:background="@drawable/minilog_style"/>
 
+        <TextView
+            android:id="@+id/textView_pumpLog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/minilog_style"
+            android:padding="8dp"
+            android:textAlignment="textStart"
+            mapbox:layout_constraintStart_toStartOf="parent"
+            mapbox:layout_constraintTop_toBottomOf="@+id/textView_miniLog" />
+
         <HorizontalScrollView
             android:id="@+id/horizontalScrollView"
             android:layout_width="match_parent"

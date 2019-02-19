@@ -1,4 +1,16 @@
 <resources>
     <string name="app_name">Marlin</string>
     <string name="access_token">pk.eyJ1IjoiZGNvcnNpIiwiYSI6ImNqcXl5cGEwejA4NW00OHBjOWhhYzdoaWYifQ.OZF4IJhealTx0oJvU3wDOw</string>
+
+    <string-array name="peristaltic_mode">
+        <item>Standard</item>
+        <item>Fill</item>
+        <item>Continuous</item>
+    </string-array>
+
+    <string-array name="boat_code">
+        <item>Boat Server</item>
+        <item>PC Server</item>
+    </string-array>
+
 </resources>

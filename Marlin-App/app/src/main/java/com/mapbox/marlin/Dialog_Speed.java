@@ -42,7 +42,6 @@ public class Dialog_Speed extends DialogFragment {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean b) {
                 textViewSpeed.setText("" + progress + "%");
                 selectedSpeed = progress;
-
             }
 
             @Override

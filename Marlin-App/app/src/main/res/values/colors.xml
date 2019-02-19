@@ -2,7 +2,7 @@
 <resources>
     <color name="colorPrimary">#3784CA</color>
     <color name="colorPrimaryDark">#3173AF</color>
-    <color name="colorAccent">#D81B60</color>
+    <color name="colorAccent">#37BECA</color>
 
     <color name="mapboxWhite">#E36565</color>
     <color name="mapboxBlue">#4264fb</color>

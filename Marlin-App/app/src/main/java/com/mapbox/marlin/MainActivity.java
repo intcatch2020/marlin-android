@@ -1,10 +1,14 @@
 package com.mapbox.marlin;
 
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
 import android.os.Debug;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -17,18 +21,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.amazonaws.RequestClientOptions;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.mapbox.android.core.permissions.PermissionsListener;
@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FloatingActionButton spiralPathButton;
     private FloatingActionButton standardPathButton;
     private TextView txtView_miniLog;
+    private TextView txtView_pumpLog;
     private NavigationView navigationView;
 
     private LinearLayout sensorTxtContainer;
@@ -90,15 +91,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ArrayList<Polyline> lineArrayList;
 
     private Marker boatMarker;
+    private Marker selectedMarker;
 
-    private boolean lineSet = false;
+    private JsonObjectRequest jsonObjectRequestGet;
 
     //private String server_ip = "157.27.198.83"; //server pc
-    private String server_ip = "192.168.2.1"; //server boat
-    //private String server_ip = "157.27.204.190"; //server my
+    //private String server_ip = "192.168.2.1"; //server boat
+    //private String server_ip = "157.27.193.198"; //server my
+    private String server_ip = "xxx.xxx.xxx.xxx";
 
     private Dialog_Connect dialog_connect;
     private Dialog_Speed dialog_speed;
+    private Dialog_Peristaltic dialog_peristaltic;
 
     private TreeMap<String, SensorData> sensorsValueMap;
     private TreeMap<String, Double> infoValueMap;
@@ -120,6 +124,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         standardPathButton = findViewById(R.id.standardPathButton);
         drawerLayout = findViewById(R.id.drawer_layout);
         txtView_miniLog = findViewById(R.id.textView_miniLog);
+        txtView_pumpLog = findViewById(R.id.textView_pumpLog);
         navigationView = findViewById(R.id.nav_view);
 
         // Get all the sensors view
@@ -161,18 +166,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         infoValueMap.put("Calibration", -1.);
         infoValueMap.put("AutoSpd", -1.);
         infoValueMap.put("Mode", -1.);
+        infoValueMap.put("Pump_on", -1.);
+        infoValueMap.put("Pump_speed", -1.);
+        infoValueMap.put("Pump_time", -1.);
 
         // Initialize other variables
         markerArrayListGraphic = new ArrayList<>();
         markerArrayListLogic = new ArrayList<>();
         lineArrayList = new ArrayList<>();
+        selectedMarker = null;
 
         // Initialize periodic GET request
-        final JsonObjectRequest jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
+        jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
 
         // Initialize dialog windows
         dialog_connect = new Dialog_Connect();
         dialog_speed = new Dialog_Speed();
+        dialog_peristaltic = new Dialog_Peristaltic();
 
         // Set-up periodic cycle
         final Handler myHandler = new Handler();
@@ -182,10 +192,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 queue.add(jsonObjectRequestGet);
                 myHandler.postDelayed(this, 500);
 
+                server_ip = Dialog_Connect.ip;
+                jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
+
                 updateMiniLogValues();
+                updatePumpLogValues();
                 updateSensorView();
+
                 updateBoatMarkerPosition();
+
                 updateAutonomySpeedView();
+                updatePeristalticView();
             }
         }, 500);
 
@@ -195,12 +212,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     public boolean onNavigationItemSelected(@NotNull MenuItem menuItem) {
                         drawerLayout.closeDrawers();
 
-                        if(menuItem.getItemId() == R.id.connect_to_boat)
+                        if(menuItem.getItemId() == R.id.connect_to_boat) {
                             dialog_connect.show(getSupportFragmentManager(), "Dialog_Connect");
-                        else if (menuItem.getItemId() == R.id.set_speed) {
+                        } else if (menuItem.getItemId() == R.id.set_speed) {
                             Dialog_Speed.server_ip = server_ip;
                             Dialog_Speed.queue = queue;
                             dialog_speed.show(getSupportFragmentManager(), "Dialog_Speed");
+                        } else if (menuItem.getItemId() == R.id.peristaltic_pump) {
+                            Dialog_Peristaltic.server_ip = server_ip;
+                            Dialog_Peristaltic.queue = queue;
+                            dialog_peristaltic.show(getSupportFragmentManager(), "Dialog_Peristaltic");
                         }
 
                         return true;
@@ -233,6 +254,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 markerArrayListGraphic.clear();
                 markerArrayListLogic.clear();
                 lineArrayList.clear();
+                selectedMarker = null;
 
                 // Re-Enable the path maker buttons
                 enableButton(spiralPathButton);
@@ -252,7 +274,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Toast.makeText(getApplicationContext(), "I need at least 3 points for this!", Toast.LENGTH_LONG).show();
                 else {
                     PathPlanner pathPlanner = new PathPlanner();
-                    pathPlanner.setPoints(markerArrayListLogic);
+                    pathPlanner.setPoints(markerArrayListGraphic);
+                    //pathPlanner.setPoints(markerArrayListLogic);
                     markerArrayListLogic = pathPlanner.getSpiralPath(3);
 
                     for (int i = 0; i < markerArrayListLogic.size() - 1; i++) {
@@ -270,25 +293,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // Standard button listener, create the spiral path (graphic for the line, logic for marker)
+        // Standard button listener, create the standard path (graphic for the line, logic for marker)
         standardPathButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v){
-                PathPlanner pathPlanner = new PathPlanner();
-                pathPlanner.setPoints(markerArrayListLogic);
-                markerArrayListLogic = pathPlanner.getStandardPath();
+                if(markerArrayListGraphic.size() < 1) {
+                    Toast.makeText(getApplicationContext(), "I need at least 1 point for this!", Toast.LENGTH_LONG).show();
+                } else {
+                    PathPlanner pathPlanner = new PathPlanner();
+                    pathPlanner.setPoints(markerArrayListGraphic);
+                    //pathPlanner.setPoints(markerArrayListLogic);
+                    markerArrayListLogic = pathPlanner.getStandardPath();
 
-                for (int i=0; i < markerArrayListLogic.size()-1; i++){
-                    Polyline newLine = map.addPolyline(new PolylineOptions()
-                            .add(markerArrayListLogic.get(i).getPosition())
-                            .add(markerArrayListLogic.get(i+1).getPosition())
-                            .width(3));
-                    lineArrayList.add(newLine);
+                    for (int i = 0; i < markerArrayListLogic.size() - 1; i++) {
+                        Polyline newLine = map.addPolyline(new PolylineOptions()
+                                .add(markerArrayListLogic.get(i).getPosition())
+                                .add(markerArrayListLogic.get(i + 1).getPosition())
+                                .width(3));
+                        lineArrayList.add(newLine);
+                    }
+
+                    enableButton(playButton);
+                    disableButton(spiralPathButton);
+                    disableButton(standardPathButton);
                 }
-
-                enableButton(playButton);
-                disableButton(spiralPathButton);
-                disableButton(standardPathButton);
             }
         });
 
@@ -303,6 +331,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 disableButton(playButton);
             }
         });
+
     }
 
     @Override
@@ -320,13 +349,91 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         map.getUiSettings().setRotateGesturesEnabled(false);
+
+        map.setOnMarkerClickListener(new MapboxMap.OnMarkerClickListener()
+        {
+            @Override
+            public boolean onMarkerClick(@NonNull Marker marker)
+            {
+                boolean done = false;
+
+                if(selectedMarker == null) {
+                    selectedMarker = marker;
+
+                    // Edit icon and add alfa when clicked
+                    Bitmap bInput = selectedMarker.getIcon().getBitmap().copy(Bitmap.Config.ARGB_8888, true);
+                    Canvas canvas = new Canvas(bInput);
+                    int color = (100 & 0xFF) << 24;
+                    canvas.drawColor(color, PorterDuff.Mode.DST_IN);
+                    IconFactory iconFactory = IconFactory.getInstance(MainActivity.this);
+                    Icon icon = iconFactory.fromBitmap(bInput);
+                    selectedMarker.setIcon(icon);
+                    done = false;
+                } else {
+                    Marker newMarker = map.addMarker(new MarkerOptions()
+                            .position(selectedMarker.getPosition())
+                            .title("Move marker #" + markerArrayListGraphic.size())
+                    );
+                    map.removeMarker(selectedMarker);
+                    markerArrayListGraphic.set(markerArrayListGraphic.indexOf(selectedMarker), newMarker);
+                    selectedMarker = null;
+                    done = true;
+                }
+
+                return done;
+            }
+        });
+
+        map.addOnMapClickListener(new MapboxMap.OnMapClickListener()
+        {
+            @Override
+            public boolean onMapClick(@NonNull final LatLng point) {
+                if(selectedMarker != null) {
+
+                    Marker newMarker = map.addMarker(new MarkerOptions()
+                            .position(point)
+                            .title("Move marker #" + markerArrayListGraphic.size())
+                    );
+                    map.removeMarker(selectedMarker);
+
+                    markerArrayListGraphic.set(markerArrayListGraphic.indexOf(selectedMarker), newMarker);
+
+                    if(lineArrayList.size() > 0) {
+                        PathPlanner pathPlanner = new PathPlanner();
+                        pathPlanner.setPoints(markerArrayListGraphic);
+
+                        if(markerArrayListLogic.size() == markerArrayListGraphic.size())
+                            markerArrayListLogic = pathPlanner.getStandardPath();
+                        else
+                            markerArrayListLogic = pathPlanner.getSpiralPath(3);
+
+                        for (Polyline l : lineArrayList)
+                            map.removePolyline(l);
+
+                        for (int i = 0; i < markerArrayListLogic.size() - 1; i++) {
+                            Polyline newLine = map.addPolyline(new PolylineOptions()
+                                    .add(markerArrayListLogic.get(i).getPosition())
+                                    .add(markerArrayListLogic.get(i + 1).getPosition())
+                                    .width(3));
+                            lineArrayList.add(newLine);
+                        }
+                    }
+
+                    selectedMarker = null;
+                }
+
+                return true;
+            }
+        });
+
+
     }
 
     @Override
     public boolean onMapLongClick(@NonNull LatLng point) {
         Marker newMarker = map.addMarker(new MarkerOptions()
                                     .position(point)
-                                    .title("Marker #" + markerArrayListGraphic.size())
+                                    .title("Move marker #" + markerArrayListGraphic.size())
         );
         markerArrayListGraphic.add(newMarker);
         markerArrayListLogic.add(newMarker);
@@ -364,6 +471,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double value = infoValueMap.get("AutoSpd");
         if(value != -1)
          Dialog_Speed.selectedSpeed = (int)value;
+    }
+
+    private void updatePeristalticView(){
+        int pump_on = infoValueMap.get("Pump_on").intValue();
+
+        if(pump_on == 1.) Dialog_Peristaltic.pump_active = true;
+        else Dialog_Peristaltic.pump_active = false;
     }
 
     @SuppressLint("DefaultLocale")
@@ -408,7 +522,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 break;
         }
 
-
         String miniLog = "";
         miniLog += String.format("IP: %s \n", ip);
         miniLog += String.format("Speed: %s \n", speed);
@@ -417,13 +530,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (calibration == -1){
             // Use calibration as a value, -1 the boat is disconnected, if {0, 1, 2} boat connected
-            txtView_miniLog.setText("Boat Disconnected");
+            txtView_miniLog.setText("Failed to connect to: " + ip);
             txtView_miniLog.setTextColor(Color.rgb(255, 0, 0));
         }
         else {
             txtView_miniLog.setText(miniLog);
             txtView_miniLog.setTextColor(Color.rgb(0, 0, 0));
         }
+    }
+
+    @SuppressLint({"DefaultLocale", "SetTextI18n"})
+    private void updatePumpLogValues(){
+
+        int pump_on = infoValueMap.get("Pump_on").intValue();
+        int pump_speed = infoValueMap.get("Pump_speed").intValue();
+        double pump_time = infoValueMap.get("Pump_time");
+
+        String pumpLog = "";
+        pumpLog += String.format("Pump ON\n");
+        pumpLog += String.format("Pump Speed: %d \n", pump_speed);
+        pumpLog += String.format("Remaining time: %4.2f (s)", pump_time);
+
+        txtView_pumpLog.setText(pumpLog);
+
+        if(pump_on == 1.) {
+            txtView_pumpLog.setVisibility(View.VISIBLE);
+            txtView_pumpLog.setText(pumpLog);
+            txtView_pumpLog.setTextColor(Color.rgb(0, 0, 0));
+        } else {
+            txtView_pumpLog.setVisibility(View.INVISIBLE);
+        }
+
     }
 
     private JSONObject createPathJSON() {
