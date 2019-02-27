@@ -2,6 +2,7 @@ package com.mapbox.marlin;
 
 import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -113,7 +114,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Class constructor
         super.onCreate(savedInstanceState);
         Mapbox.getInstance(this, getString(R.string.access_token));
-        setContentView(R.layout.activity_main);
+
+        boolean isTablet = getResources().getBoolean(R.bool.isTablet);
+        if(isTablet) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            setContentView(R.layout.activity_main_tablet);
+        } else {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            setContentView(R.layout.activity_main);
+        }
 
         // Get all view elements
         mapView = findViewById(R.id.mapView);
@@ -145,13 +154,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapView.getMapAsync(this);
 
         // Toolbar and actionbar stuff
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        ActionBar actionbar = getSupportActionBar();
-        assert actionbar != null;
-        actionbar.setDisplayShowTitleEnabled(false);
-        actionbar.setDisplayHomeAsUpEnabled(true);
-        actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
+        if (!isTablet) {
+            Toolbar toolbar = findViewById(R.id.toolbar);
+            setSupportActionBar(toolbar);
+            ActionBar actionbar = getSupportActionBar();
+            assert actionbar != null;
+            actionbar.setDisplayShowTitleEnabled(false);
+            actionbar.setDisplayHomeAsUpEnabled(true);
+            actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
+        }
 
         // Initialize server request queue
         final RequestQueue queue = Volley.newRequestQueue(this);
@@ -493,6 +504,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             i++;
         }
 
+        int calibration = infoValueMap.get("Calibration").intValue();
+        if (calibration == -1) // Use calibration as a value, -1 the boat is disconnected, if {0, 1, 2} boat connected
+            i = 0;
+
         for (int j=i; j < sensorsTextViewList.size(); j++){
             sensorsTextViewList.get(j).setVisibility(View.GONE);
         }
@@ -518,7 +533,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 modeStr = "Go Home";
                 break;
             default:
-                modeStr = "Unknown";
+                modeStr = "IDLE";
                 break;
         }
 
@@ -547,7 +562,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double pump_time = infoValueMap.get("Pump_time");
 
         String pumpLog = "";
-        pumpLog += String.format("Pump ON\n");
+        pumpLog += ("Pump ON\n");
         pumpLog += String.format("Pump Speed: %d \n", pump_speed);
         pumpLog += String.format("Remaining time: %4.2f (s)", pump_time);
 
