@@ -31,8 +31,8 @@ public class Dialog_Speed extends DialogFragment {
         LayoutInflater inflater = Objects.requireNonNull(getActivity()).getLayoutInflater();
 
         View view = inflater.inflate((R.layout.popup_speed), null);
-        SeekBar seekBarSpeed = view.findViewById(R.id.sb_speed);
-        final TextView textViewSpeed = view.findViewById(R.id.tv_speed);
+        SeekBar seekBarSpeed = (SeekBar) view.findViewById(R.id.sb_speed);
+        final TextView textViewSpeed = (TextView) view.findViewById(R.id.tv_speed);
 
         seekBarSpeed.setProgress(selectedSpeed);
         textViewSpeed.setText(selectedSpeed + "%");

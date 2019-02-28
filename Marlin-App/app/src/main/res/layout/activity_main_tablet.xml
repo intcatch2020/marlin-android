@@ -28,8 +28,8 @@
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/clearButton"
-            android:layout_width="75dp"
-            android:layout_height="65dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="8dp"
             android:clickable="true"
@@ -41,8 +41,8 @@
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/playButton"
-            android:layout_width="75dp"
-            android:layout_height="65dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
@@ -57,8 +57,8 @@
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/centerBoatButton"
-            android:layout_width="75dp"
-            android:layout_height="65dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginStart="300dp"
             android:layout_marginBottom="8dp"
             android:clickable="true"
@@ -70,8 +70,8 @@
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/spiralPathButton"
-            android:layout_width="75dp"
-            android:layout_height="65dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
@@ -85,8 +85,8 @@
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/standardPathButton"
-            android:layout_width="75dp"
-            android:layout_height="65dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
@@ -97,6 +97,28 @@
             mapbox:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
             mapbox:layout_constraintEnd_toStartOf="@+id/clearButton"
             mapbox:layout_constraintStart_toEndOf="@+id/playButton" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/spiralPlusButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="300dp"
+            android:layout_marginTop="16dp"
+            android:src="@drawable/ic_plus"
+            mapbox:backgroundTint="@color/floatingButton"
+            mapbox:layout_constraintStart_toStartOf="parent"
+            mapbox:layout_constraintTop_toTopOf="@+id/mapView" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/spiralMinusButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="300dp"
+            android:layout_marginTop="16dp"
+            android:src="@drawable/ic_minus"
+            mapbox:backgroundTint="@color/floatingButton"
+            mapbox:layout_constraintStart_toStartOf="parent"
+            mapbox:layout_constraintTop_toBottomOf="@+id/spiralPlusButton" />
 
         <TextView
             android:id="@+id/textView_miniLog"

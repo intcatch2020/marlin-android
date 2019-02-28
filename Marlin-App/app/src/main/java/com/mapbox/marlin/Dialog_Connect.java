@@ -33,8 +33,8 @@ public class Dialog_Connect extends DialogFragment {
         LayoutInflater inflater = Objects.requireNonNull(getActivity()).getLayoutInflater();
 
         View view = inflater.inflate((R.layout.popup_connect), null);
-        final EditText editText = view.findViewById(R.id.connect_password);
-        final Spinner spinner = view.findViewById(R.id.connect_spinner);
+        final EditText editText = (EditText) view.findViewById(R.id.connect_password);
+        final Spinner spinner = (Spinner) view.findViewById(R.id.connect_spinner);
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override

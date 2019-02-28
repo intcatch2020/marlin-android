@@ -24,6 +24,7 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -79,6 +80,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FloatingActionButton centerBoatButton;
     private FloatingActionButton spiralPathButton;
     private FloatingActionButton standardPathButton;
+    private FloatingActionButton spiralPlusButton;
+    private FloatingActionButton spiralMinusButton;
     private TextView txtView_miniLog;
     private TextView txtView_pumpLog;
     private NavigationView navigationView;
@@ -95,6 +98,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Marker selectedMarker;
 
     private JsonObjectRequest jsonObjectRequestGet;
+
+    private int spiralSize = 3;
 
     //private String server_ip = "157.27.198.83"; //server pc
     //private String server_ip = "192.168.2.1"; //server boat
@@ -130,11 +135,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         playButton = findViewById(R.id.playButton);
         centerBoatButton = findViewById(R.id.centerBoatButton);
         spiralPathButton = findViewById(R.id.spiralPathButton);
+        spiralPlusButton = findViewById(R.id.spiralPlusButton);
+        spiralMinusButton = findViewById(R.id.spiralMinusButton);
         standardPathButton = findViewById(R.id.standardPathButton);
         drawerLayout = findViewById(R.id.drawer_layout);
         txtView_miniLog = findViewById(R.id.textView_miniLog);
         txtView_pumpLog = findViewById(R.id.textView_pumpLog);
         navigationView = findViewById(R.id.nav_view);
+
+        // Set invisible some buttons
+        spiralPlusButton.hide();
+        spiralMinusButton.hide();
+        spiralPlusButton.setEnabled(false);
+        spiralMinusButton.setEnabled(false);
 
         // Get all the sensors view
         sensorsTextViewList = new ArrayList<>();
@@ -272,6 +285,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 enableButton(standardPathButton);
                 disableButton(playButton);
 
+                // Disable spiral setting buttons
+                spiralPlusButton.hide();
+                spiralMinusButton.hide();
+                spiralPlusButton.setEnabled(false);
+                spiralMinusButton.setEnabled(false);
+                spiralSize = 3;
+
                 // POST request for stop autonomy
                 queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/stop_autonomy", null, null, null));
             }
@@ -300,6 +320,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     enableButton(playButton);
                     disableButton(spiralPathButton);
                     disableButton(standardPathButton);
+
+                    spiralPlusButton.show();
+                    spiralMinusButton.show();
+                    spiralPlusButton.setEnabled(true);
+                    spiralMinusButton.setEnabled(true);
                 }
             }
         });
@@ -336,10 +361,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onClick(View v){
                 Toast.makeText(getApplicationContext(), "Sending path...", Toast.LENGTH_LONG).show();
-
                 queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", createPathJSON(), null, null));
-
                 disableButton(playButton);
+            }
+        });
+
+        // Spiral Plus Button Listener
+        spiralPlusButton.setOnClickListener( new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                //Toast.makeText(getApplicationContext(), "Press Plus ...", Toast.LENGTH_LONG).show();
+                spiralSize ++;
+                resetSpiral(spiralSize);
+            }
+        });
+
+        // Spiral Minus Button Listener
+        spiralMinusButton.setOnClickListener( new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                //Toast.makeText(getApplicationContext(), "Press Minus ...", Toast.LENGTH_LONG).show();
+                if(spiralSize > 1) spiralSize --;
+                resetSpiral(spiralSize);
             }
         });
 
@@ -613,6 +656,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         button.setEnabled(true);
         button.setClickable(true);
         button.setAlpha(1.f);
+    }
+
+    private void resetSpiral(int n){
+        PathPlanner pathPlanner = new PathPlanner();
+        pathPlanner.setPoints(markerArrayListGraphic);
+        markerArrayListLogic = pathPlanner.getSpiralPath(n);
+
+        for (Polyline l : lineArrayList)
+            map.removePolyline(l);
+
+        for (int i = 0; i < markerArrayListLogic.size() - 1; i++) {
+            Polyline newLine = map.addPolyline(new PolylineOptions()
+                    .add(markerArrayListLogic.get(i).getPosition())
+                    .add(markerArrayListLogic.get(i + 1).getPosition())
+                    .width(3));
+            lineArrayList.add(newLine);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////

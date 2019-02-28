@@ -37,9 +37,9 @@ public class Dialog_Peristaltic extends DialogFragment {
         LayoutInflater inflater = Objects.requireNonNull(getActivity()).getLayoutInflater();
 
         View view = inflater.inflate((R.layout.popup_peristaltic), null);
-        final Switch activeSwitch = view.findViewById(R.id.peristaltic_switch);
-        Spinner spinner = view.findViewById(R.id.peristaltic_spinner);
-        final TextView text = view.findViewById(R.id.peristaltic_time);
+        final Switch activeSwitch = (Switch) view.findViewById(R.id.peristaltic_switch);
+        Spinner spinner = (Spinner) view.findViewById(R.id.peristaltic_spinner);
+        final TextView text = (TextView) view.findViewById(R.id.peristaltic_time);
 
         activeSwitch.setChecked(pump_active);
         spinner.setSelection(mode);

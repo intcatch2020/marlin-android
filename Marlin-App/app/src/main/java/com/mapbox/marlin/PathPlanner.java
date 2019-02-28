@@ -3,7 +3,7 @@ package com.mapbox.marlin;
 import android.os.Debug;
 import android.util.Log;
 
-import com.amazonaws.RequestClientOptions;
+//import com.amazonaws.RequestClientOptions;
 import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.geometry.LatLng;
