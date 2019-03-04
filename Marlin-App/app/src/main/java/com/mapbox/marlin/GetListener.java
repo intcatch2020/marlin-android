@@ -1,7 +1,5 @@
 package com.mapbox.marlin;
 
-import android.os.Debug;
-import android.util.Log;
 
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -25,7 +23,7 @@ public class GetListener implements Response.Listener<JSONObject>, Response.Erro
     public void onResponse(JSONObject response) {
         double boatLatitude = -1, boatLongitude = -1, gpsSpeed = -1;
         double boatRotation = -1, calibration = 0;
-        double autoSpeed = 50, mode = 0;
+        double autoSpeed = 50, mode = 0, reachedPoint = 0;
         double pump_on= -1, pump_speed = -1, pump_time = -1;
 
         try {
@@ -70,6 +68,7 @@ public class GetListener implements Response.Listener<JSONObject>, Response.Erro
         try {
             autoSpeed = response.getDouble("autonomy_speed");
             mode = response.getDouble("driving_mode"); // 0 = RC, 1 = Autonomy, 2 = Go Home
+            reachedPoint = response.getDouble("reached_point");
         } catch (JSONException e) { e.printStackTrace(); }
 
         infoValueMap.put("Lat", boatLatitude);
@@ -79,6 +78,7 @@ public class GetListener implements Response.Listener<JSONObject>, Response.Erro
         infoValueMap.put("Calibration", calibration);
         infoValueMap.put("AutoSpd", autoSpeed);
         infoValueMap.put("Mode", mode);
+        infoValueMap.put("ReachedPoint", reachedPoint);
         infoValueMap.put("Pump_on", pump_on);
         infoValueMap.put("Pump_speed", pump_speed);
         infoValueMap.put("Pump_time", pump_time);
@@ -93,6 +93,7 @@ public class GetListener implements Response.Listener<JSONObject>, Response.Erro
         infoValueMap.put("Calibration", -1.);
         infoValueMap.put("AutoSpd", -1.);
         infoValueMap.put("Mode", -1.);
+        infoValueMap.put("ReachedPoint", -1.);
         infoValueMap.put("Pump_on", -1.);
         infoValueMap.put("Pump_speed", -1.);
         infoValueMap.put("Pump_time", -1.);

@@ -1,20 +1,18 @@
 package com.mapbox.marlin;
 
 import android.annotation.SuppressLint;
-import android.app.Dialog;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.os.Debug;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
+import android.support.v4.graphics.ColorUtils;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
@@ -24,7 +22,6 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -151,16 +148,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Get all the sensors view
         sensorsTextViewList = new ArrayList<>();
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_1));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_2));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_3));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_4));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_5));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_6));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_7));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_8));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_9));
-        sensorsTextViewList.add((TextView) findViewById(R.id.textView_10));
+        sensorsTextViewList.add(findViewById(R.id.textView_1));
+        sensorsTextViewList.add(findViewById(R.id.textView_2));
+        sensorsTextViewList.add(findViewById(R.id.textView_3));
+        sensorsTextViewList.add(findViewById(R.id.textView_4));
+        sensorsTextViewList.add(findViewById(R.id.textView_5));
+        sensorsTextViewList.add(findViewById(R.id.textView_6));
+        sensorsTextViewList.add(findViewById(R.id.textView_7));
+        sensorsTextViewList.add(findViewById(R.id.textView_8));
+        sensorsTextViewList.add(findViewById(R.id.textView_9));
+        sensorsTextViewList.add(findViewById(R.id.textView_10));
+        sensorsTextViewList.add(findViewById(R.id.textView_11));
+        sensorsTextViewList.add(findViewById(R.id.textView_12));
+        sensorsTextViewList.add(findViewById(R.id.textView_13));
 
         // Initialize MapBox
         mapView.onCreate(savedInstanceState);
@@ -190,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         infoValueMap.put("Calibration", -1.);
         infoValueMap.put("AutoSpd", -1.);
         infoValueMap.put("Mode", -1.);
+        infoValueMap.put("ReachedPoint", -1.);
         infoValueMap.put("Pump_on", -1.);
         infoValueMap.put("Pump_speed", -1.);
         infoValueMap.put("Pump_time", -1.);
@@ -224,6 +225,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 updateSensorView();
 
                 updateBoatMarkerPosition();
+                updateReachedPoint();
 
                 updateAutonomySpeedView();
                 updatePeristalticView();
@@ -363,6 +365,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Toast.makeText(getApplicationContext(), "Sending path...", Toast.LENGTH_LONG).show();
                 queue.add(new JsonObjectRequest(Request.Method.POST, "http://" + server_ip + ":5000/start_autonomy", createPathJSON(), null, null));
                 disableButton(playButton);
+
+                spiralPlusButton.hide();
+                spiralMinusButton.hide();
+                spiralPlusButton.setEnabled(false);
+                spiralMinusButton.setEnabled(false);
             }
         });
 
@@ -372,7 +379,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onClick(View v){
                 //Toast.makeText(getApplicationContext(), "Press Plus ...", Toast.LENGTH_LONG).show();
                 spiralSize ++;
-                resetSpiral(spiralSize);
+                resetSpiral();
             }
         });
 
@@ -382,7 +389,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onClick(View v){
                 //Toast.makeText(getApplicationContext(), "Press Minus ...", Toast.LENGTH_LONG).show();
                 if(spiralSize > 1) spiralSize --;
-                resetSpiral(spiralSize);
+                resetSpiral();
             }
         });
 
@@ -479,18 +486,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return true;
             }
         });
-
-
     }
 
     @Override
     public boolean onMapLongClick(@NonNull LatLng point) {
         Marker newMarker = map.addMarker(new MarkerOptions()
-                                    .position(point)
-                                    .title("Move marker #" + markerArrayListGraphic.size())
+                .position(point)
+                .title("Move marker #" + markerArrayListGraphic.size())
         );
         markerArrayListGraphic.add(newMarker);
         markerArrayListLogic.add(newMarker);
+
+        if(lineArrayList.size() > 0){
+            // Line drawed
+            if (markerArrayListGraphic.size() == markerArrayListLogic.size()) resetLine();
+            else resetSpiral();
+        }
+
         return true;
     }
 
@@ -658,7 +670,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         button.setAlpha(1.f);
     }
 
-    private void resetSpiral(int n){
+    private void resetSpiral(){
+        int n = spiralSize;
+
         PathPlanner pathPlanner = new PathPlanner();
         pathPlanner.setPoints(markerArrayListGraphic);
         markerArrayListLogic = pathPlanner.getSpiralPath(n);
@@ -673,6 +687,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .width(3));
             lineArrayList.add(newLine);
         }
+    }
+
+    private void resetLine(){
+        PathPlanner pathPlanner = new PathPlanner();
+        pathPlanner.setPoints(markerArrayListGraphic);
+        markerArrayListLogic = pathPlanner.getStandardPath();
+
+        for (Polyline l : lineArrayList)
+            map.removePolyline(l);
+
+        for (int i = 0; i < markerArrayListLogic.size() - 1; i++) {
+            Polyline newLine = map.addPolyline(new PolylineOptions()
+                    .add(markerArrayListLogic.get(i).getPosition())
+                    .add(markerArrayListLogic.get(i + 1).getPosition())
+                    .width(3));
+            lineArrayList.add(newLine);
+        }
+    }
+
+    private void updateReachedPoint(){
+        int n = infoValueMap.get("ReachedPoint").intValue();
+        int alpha = 40; //between 0-255 (255 = NO ALPHA)
+        int blackAlpha = ColorUtils.setAlphaComponent(Color.BLACK, alpha);
+
+        for (int i = 0; i < n-1; i++)
+            if(i < lineArrayList.size())
+                lineArrayList.get(i).setColor(blackAlpha);
     }
 
     //////////////////////////////////////////////////////////////////////////
