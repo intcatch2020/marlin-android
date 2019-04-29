@@ -49,12 +49,12 @@ public class Dialog_Peristaltic extends DialogFragment {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 switch (position){
                     case 0:
-                        text.setText("Necessary time: 20m 00s");
+                        text.setText("Necessary time: 30m 00s");
                         if(mode != 0) activeSwitch.setChecked(false);
                         mode = 0;
                         break;
                     case 1:
-                        text.setText("Necessary time: 6m 00s");
+                        text.setText("Necessary time: 4m 30s");
                         if(mode != 1) activeSwitch.setChecked(false);
                         mode = 1;
                         break;
@@ -77,10 +77,10 @@ public class Dialog_Peristaltic extends DialogFragment {
                 double necessaryTime;
                 switch (mode){
                     case 0:
-                        necessaryTime = 1200; //Normal mode (20m)
+                        necessaryTime = 1800; //Normal mode (30m)
                         break;
                     case 1:
-                        necessaryTime = 30; //Fill mode
+                        necessaryTime = 270; //Fill mode
                         break;
                     case 2:
                         necessaryTime = 0; //Continuous

@@ -26,6 +26,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -203,6 +204,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Initialize periodic GET request
         jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
+        jsonObjectRequestGet.setRetryPolicy(new DefaultRetryPolicy(
+                800,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
         // Initialize dialog windows
         dialog_connect = new Dialog_Connect();
@@ -219,6 +224,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 server_ip = Dialog_Connect.ip;
                 jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
+                jsonObjectRequestGet.setRetryPolicy(new DefaultRetryPolicy(
+                        800,
+                        DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                        DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
                 updateMiniLogValues();
                 updatePumpLogValues();
@@ -614,12 +623,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         int pump_on = infoValueMap.get("Pump_on").intValue();
         int pump_speed = infoValueMap.get("Pump_speed").intValue();
-        double pump_time = infoValueMap.get("Pump_time");
+        int pump_time = infoValueMap.get("Pump_time").intValue();
 
         String pumpLog = "";
         pumpLog += ("Pump ON\n");
         pumpLog += String.format("Pump Speed: %d \n", pump_speed);
-        pumpLog += String.format("Remaining time: %4.2f (s)", pump_time);
+
+        //int pumpTimeInt = (int) pump_time;
+        int pumpTimeMinutes = (pump_time % 3600) / 60;
+        int pumpTimeSeconds = pump_time % 50;
+
+        pumpLog += String.format("Remaining time: %02dm%02ds", pumpTimeMinutes, pumpTimeSeconds);
 
         txtView_pumpLog.setText(pumpLog);
 
@@ -708,6 +722,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void updateReachedPoint(){
         int n = infoValueMap.get("ReachedPoint").intValue();
+        Log.d("Reached Point", ""+n);
         int alpha = 40; //between 0-255 (255 = NO ALPHA)
         int blackAlpha = ColorUtils.setAlphaComponent(Color.BLACK, alpha);
 
