@@ -100,9 +100,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int spiralSize = 3;
 
     //private String server_ip = "157.27.198.83"; //server pc
-    //private String server_ip = "192.168.2.1"; //server boat
+    private String server_ip = "192.168.2.1"; //server boat
     //private String server_ip = "157.27.193.198"; //server my
-    private String server_ip = "xxx.xxx.xxx.xxx";
+    //private String server_ip = "xxx.xxx.xxx.xxx";
 
     private Dialog_Connect dialog_connect;
     private Dialog_Speed dialog_speed;
@@ -222,7 +222,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 queue.add(jsonObjectRequestGet);
                 myHandler.postDelayed(this, 500);
 
-                server_ip = Dialog_Connect.ip;
+                //TODO: the ip is the same for every boat, dialog connect not necessary
+                server_ip = "192.168.2.1"; //server_ip = Dialog_Connect.ip;
                 jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
                 jsonObjectRequestGet.setRetryPolicy(new DefaultRetryPolicy(
                         800,
@@ -631,7 +632,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //int pumpTimeInt = (int) pump_time;
         int pumpTimeMinutes = (pump_time % 3600) / 60;
-        int pumpTimeSeconds = pump_time % 50;
+        int pumpTimeSeconds = pump_time % 60;
 
         pumpLog += String.format("Remaining time: %02dm%02ds", pumpTimeMinutes, pumpTimeSeconds);
 

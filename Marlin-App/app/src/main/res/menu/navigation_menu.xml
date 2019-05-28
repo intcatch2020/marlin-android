@@ -3,7 +3,8 @@
 
     <item
         android:id="@+id/connect_to_boat"
-        android:icon="@drawable/ic_connect"
+        android:icon="@drawable/ic_wip"
+        android:enabled="false"
         android:title="Connect to Boat" />
 
     <item
