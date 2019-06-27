@@ -119,13 +119,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Mapbox.getInstance(this, getString(R.string.access_token));
 
         boolean isTablet = getResources().getBoolean(R.bool.isTablet);
-        if(isTablet) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            setContentView(R.layout.activity_main_tablet);
-        } else {
+        //if(isTablet) {
+        //    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        //    setContentView(R.layout.activity_main_tablet);
+        //} else {
+        //TODO: tablet version diasable
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             setContentView(R.layout.activity_main);
-        }
+        //}
 
         // Get all view elements
         mapView = findViewById(R.id.mapView);
@@ -226,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 server_ip = "192.168.2.1"; //server_ip = Dialog_Connect.ip;
                 jsonObjectRequestGet = new JsonObjectRequest(Request.Method.GET, "http://" + server_ip + ":5000/state", null, new GetListener(sensorsValueMap, infoValueMap), new GetListener(sensorsValueMap, infoValueMap));
                 jsonObjectRequestGet.setRetryPolicy(new DefaultRetryPolicy(
-                        800,
+                        1500,
                         DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
                         DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 

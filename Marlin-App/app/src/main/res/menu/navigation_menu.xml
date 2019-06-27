@@ -5,7 +5,7 @@
         android:id="@+id/connect_to_boat"
         android:icon="@drawable/ic_wip"
         android:enabled="false"
-        android:title="Connect to Boat" />
+        android:title="Go Home" />
 
     <item
         android:id="@+id/set_speed"
